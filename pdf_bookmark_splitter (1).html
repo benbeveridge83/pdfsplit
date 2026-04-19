@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Bookmark Splitter</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121932;
+      --panel-2: #1a2345;
+      --text: #e9eefc;
+      --muted: #aeb8d8;
+      --accent: #7aa2ff;
+      --accent-2: #9bffcf;
+      --danger: #ff8f8f;
+      --border: #2a3566;
+      --shadow: 0 10px 28px rgba(0,0,0,.28);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(180deg, #0b1020, #0e1530 55%, #0b1020);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: clamp(1.8rem, 2.8vw, 2.6rem);
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .sub {
+      color: var(--muted);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
+    }
+
+    label {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin: 12px 0 8px;
+    }
+
+    input[type="file"], input[type="text"], input[type="number"], select, textarea {
+      width: 100%;
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 11px 12px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 82px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.45;
+      margin-top: 6px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .row, .row-3 { grid-template-columns: 1fr; }
+    }
+
+    .btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent);
+      color: #091124;
+    }
+
+    button.secondary {
+      background: #25315e;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px dashed var(--border);
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(122, 162, 255, .12);
+      color: #cfe0ff;
+      border: 1px solid rgba(122, 162, 255, .25);
+      font-size: .86rem;
+      margin: 6px 8px 0 0;
+    }
+
+    .status {
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #0a0f22;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 100px;
+      color: #dbe5ff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+    }
+
+    th, td {
+      padding: 11px 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+
+    th {
+      background: #141c38;
+      color: #d9e3ff;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+    tr:last-child td { border-bottom: 0; }
+
+    .table-wrap {
+      max-height: 560px;
+      overflow: auto;
+      border-radius: 14px;
+    }
+
+    .bad { color: var(--danger); }
+    .good { color: var(--accent-2); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .small { font-size: .84rem; color: var(--muted); }
+    .top-space { margin-top: 12px; }
+    .footer { color: var(--muted); margin-top: 18px; font-size: 0.84rem; line-height: 1.45; }
+    code.inline {
+      background: #0a0f22;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2px 6px;
+      color: #d7e4ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>PDF Bookmark Splitter</h1>
+    <div class="sub">
+      Upload a bookmarked PDF, detect bookmark start pages, preview each segment, and export all segments as separate PDFs in a ZIP using a custom filename pattern.
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Settings</h2>
+
+        <label for="pdfFile">PDF file</label>
+        <input id="pdfFile" type="file" accept="application/pdf" />
+        <div class="hint">This runs fully in your browser. Your PDF is not uploaded anywhere by this page.</div>
+
+        <label for="levelSelect">Bookmark level to split on</label>
+        <select id="levelSelect">
+          <option value="1">Level 1</option>
+          <option value="2">Level 2</option>
+          <option value="3">Level 3</option>
+          <option value="4">Level 4</option>
+        </select>
+        <div class="hint">Most PDFs use top-level bookmarks for major sections.</div>
+
+        <label for="nameTemplate">Filename template</label>
+        <input id="nameTemplate" type="text" value="{orig}_p{page}_{bookmark}" />
+        <div class="hint">
+          Available placeholders: <span class="mono">{orig}</span>, <span class="mono">{bookmark}</span>, <span class="mono">{page}</span>, <span class="mono">{index}</span>, <span class="mono">{start}</span>, <span class="mono">{end}</span>, <span class="mono">{pages}</span>.
+        </div>
+
+        <div class="row-3 top-space">
+          <div>
+            <label for="pagePad">Pad page numbers</label>
+            <input id="pagePad" type="number" min="1" max="6" value="3" />
+          </div>
+          <div>
+            <label for="indexPad">Pad segment index</label>
+            <input id="indexPad" type="number" min="1" max="6" value="2" />
+          </div>
+          <div>
+            <label for="zipName">ZIP name</label>
+            <input id="zipName" type="text" value="split-output" />
+          </div>
+        </div>
+
+        <label for="sanitizeMode">Filename cleanup</label>
+        <select id="sanitizeMode">
+          <option value="safe">Safe (recommended)</option>
+          <option value="aggressive">Aggressive cleanup</option>
+        </select>
+
+        <div class="btns">
+          <button id="analyzeBtn">Analyze bookmarks</button>
+          <button id="exportBtn" disabled>Export ZIP</button>
+          <button id="sampleBtn" class="secondary">Insert sample template</button>
+          <button id="clearBtn" class="ghost">Clear</button>
+        </div>
+
+        <div class="top-space">
+          <div class="pill">Suggested: <span class="mono">{orig}_p{page}_{bookmark}</span></div>
+          <div class="pill">Range: <span class="mono">{orig}_{start}-{end}_{bookmark}</span></div>
+          <div class="pill">Indexed: <span class="mono">{orig}_{index}_{bookmark}</span></div>
+        </div>
+
+        <label for="statusBox">Status</label>
+        <div id="statusBox" class="status">Load a PDF, then click “Analyze bookmarks”.</div>
+
+        <div class="footer">
+          Best results: open this page through <span class="mono">http://localhost</span> instead of directly as a <span class="mono">file://</span> HTML file. Browser security can block PDF worker loading and ZIP export on local file URLs.
+          Notes: this app splits at the bookmark destinations it can resolve. Some PDFs have bookmarks pointing to named destinations or odd internal objects; those are handled where possible, but a few unusual files may need adjustment in Acrobat first.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Detected segments</h2>
+        <div class="small" id="summary">No PDF analyzed yet.</div>
+        <div class="table-wrap top-space">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Bookmark</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Pages</th>
+                <th>Preview filename</th>
+              </tr>
+            </thead>
+            <tbody id="segmentsBody">
+              <tr><td colspan="6" class="small">Nothing to show yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.3.136/pdf.min.mjs" type="module"></script>
+  <script type="module">
+    import { PDFDocument } from 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm';
+    import JSZip from 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm';
+    import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.3.136/pdf.min.mjs';
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.3.136/pdf.worker.min.mjs';
+
+    const el = {
+      pdfFile: document.getElementById('pdfFile'),
+      levelSelect: document.getElementById('levelSelect'),
+      nameTemplate: document.getElementById('nameTemplate'),
+      pagePad: document.getElementById('pagePad'),
+      indexPad: document.getElementById('indexPad'),
+      zipName: document.getElementById('zipName'),
+      sanitizeMode: document.getElementById('sanitizeMode'),
+      analyzeBtn: document.getElementById('analyzeBtn'),
+      exportBtn: document.getElementById('exportBtn'),
+      sampleBtn: document.getElementById('sampleBtn'),
+      clearBtn: document.getElementById('clearBtn'),
+      statusBox: document.getElementById('statusBox'),
+      segmentsBody: document.getElementById('segmentsBody'),
+      summary: document.getElementById('summary'),
+    };
+
+    const state = {
+      file: null,
+      baseName: '',
+      pdfBytes: null,
+      pdfjsDoc: null,
+      totalPages: 0,
+      rawBookmarks: [],
+      segments: [],
+    };
+
+    function setStatus(message, isError = false) {
+      el.statusBox.textContent = message;
+      el.statusBox.classList.toggle('bad', isError);
+    }
+
+    function pad(num, len) {
+      return String(num).padStart(Math.max(1, Number(len) || 1), '0');
+    }
+
+    function stripExt(name) {
+      return name.replace(/\.[^.]+$/, '');
+    }
+
+    function sanitizeFilename(name, mode = 'safe') {
+      let v = name.normalize('NFKD');
+      if (mode === 'aggressive') {
+        v = v.replace(/[^a-zA-Z0-9._ -]+/g, ' ');
+      } else {
+        v = v.replace(/[\\/:*?"<>|#%&{}$!'@+=`~]+/g, ' ');
+      }
+      v = v.replace(/\s+/g, ' ').replace(/\.+$/g, '').trim();
+      v = v.replace(/^\.+/, '');
+      return v || 'untitled';
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderSegments() {
+      const rows = state.segments;
+      if (!rows.length) {
+        el.segmentsBody.innerHTML = '<tr><td colspan="6" class="small">Nothing to show yet.</td></tr>';
+        el.summary.textContent = 'No PDF analyzed yet.';
+        el.exportBtn.disabled = true;
+        return;
+      }
+
+      const pageTotal = rows.reduce((sum, r) => sum + r.pages, 0);
+      el.summary.textContent = `${rows.length} segment(s) detected across ${pageTotal} page(s).`;
+      el.segmentsBody.innerHTML = rows.map(seg => `
+        <tr>
+          <td>${seg.index}</td>
+          <td>${escapeHtml(seg.bookmark)}</td>
+          <td>${seg.start}</td>
+          <td>${seg.end}</td>
+          <td>${seg.pages}</td>
+          <td class="mono">${escapeHtml(seg.previewName)}</td>
+        </tr>
+      `).join('');
+      el.exportBtn.disabled = false;
+    }
+
+    function buildFilename(seg) {
+      const template = el.nameTemplate.value || '{orig}_p{page}_{bookmark}';
+      const filename = template
+        .replaceAll('{orig}', state.baseName)
+        .replaceAll('{bookmark}', seg.bookmark)
+        .replaceAll('{page}', pad(seg.start, el.pagePad.value))
+        .replaceAll('{index}', pad(seg.index, el.indexPad.value))
+        .replaceAll('{start}', pad(seg.start, el.pagePad.value))
+        .replaceAll('{end}', pad(seg.end, el.pagePad.value))
+        .replaceAll('{pages}', String(seg.pages));
+
+      return sanitizeFilename(filename, el.sanitizeMode.value) + '.pdf';
+    }
+
+    async function flattenOutline(items, depth = 1, result = []) {
+      if (!items) return result;
+      for (const item of items) {
+        result.push({
+          title: item.title || '(Untitled Bookmark)',
+          dest: item.dest,
+          depth,
+        });
+        if (item.items?.length) {
+          await flattenOutline(item.items, depth + 1, result);
+        }
+      }
+      return result;
+    }
+
+    async function resolveDestToPageNumber(dest) {
+      if (!dest || !state.pdfjsDoc) return null;
+      try {
+        let explicitDest = dest;
+        if (typeof dest === 'string') {
+          explicitDest = await state.pdfjsDoc.getDestination(dest);
+        }
+        if (!explicitDest) return null;
+        const [ref] = explicitDest;
+        const pageIndex = await state.pdfjsDoc.getPageIndex(ref);
+        return pageIndex + 1;
+      } catch {
+        return null;
+      }
+    }
+
+    async function analyzePdf() {
+      const file = el.pdfFile.files?.[0];
+      if (!file) {
+        setStatus('Choose a PDF first.', true);
+        return;
+      }
+
+      setStatus('Reading PDF…');
+      state.file = file;
+      state.baseName = sanitizeFilename(stripExt(file.name), el.sanitizeMode.value);
+      const rawBytes = await file.arrayBuffer();
+      state.pdfBytes = rawBytes.slice(0);
+
+      try {
+        state.pdfjsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(state.pdfBytes.slice(0)) }).promise;
+      } catch (err) {
+        setStatus(`Could not open the PDF. ${err?.message || err}`, true);
+        return;
+      }
+
+      state.totalPages = state.pdfjsDoc.numPages;
+      const outline = await state.pdfjsDoc.getOutline();
+      if (!outline?.length) {
+        state.rawBookmarks = [];
+        state.segments = [];
+        renderSegments();
+        setStatus('This PDF appears to have no bookmarks that PDF.js can read.', true);
+        return;
+      }
+
+      setStatus('Resolving bookmark destinations…');
+      const flat = await flattenOutline(outline);
+      const targetDepth = Number(el.levelSelect.value || 1);
+      const chosen = flat.filter(b => b.depth === targetDepth);
+      const resolved = [];
+
+      for (const b of chosen) {
+        const page = await resolveDestToPageNumber(b.dest);
+        if (page != null) {
+          resolved.push({ ...b, page });
+        }
+      }
+
+      const deduped = resolved
+        .sort((a, b) => a.page - b.page || a.title.localeCompare(b.title))
+        .filter((item, idx, arr) => idx === 0 || !(item.page === arr[idx - 1].page && item.title === arr[idx - 1].title));
+
+      if (!deduped.length) {
+        state.rawBookmarks = [];
+        state.segments = [];
+        renderSegments();
+        setStatus('Bookmarks were found, but their page destinations could not be resolved at the selected level.', true);
+        return;
+      }
+
+      state.rawBookmarks = deduped;
+      const segments = deduped.map((bm, i) => {
+        const start = bm.page;
+        const end = i < deduped.length - 1 ? deduped[i + 1].page - 1 : state.totalPages;
+        return {
+          index: i + 1,
+          bookmark: bm.title.trim() || `Bookmark ${i + 1}`,
+          start,
+          end,
+          pages: Math.max(0, end - start + 1),
+          previewName: '',
+        };
+      }).filter(s => s.pages > 0);
+
+      state.segments = segments.map(seg => ({ ...seg, previewName: buildFilename(seg) }));
+      renderSegments();
+      setStatus(`Done. Found ${state.segments.length} split point(s) at bookmark level ${targetDepth}.`);
+    }
+
+    async function exportZip() {
+      if (!state.segments.length || !state.pdfBytes) {
+        setStatus('Analyze a PDF first.', true);
+        return;
+      }
+
+      el.exportBtn.disabled = true;
+      el.analyzeBtn.disabled = true;
+
+      try {
+        setStatus('Loading source PDF for export…');
+        const sourcePdf = await PDFDocument.load(state.pdfBytes.slice(0));
+        const zip = new JSZip();
+
+        for (let i = 0; i < state.segments.length; i++) {
+          const seg = {
+            ...state.segments[i],
+            previewName: buildFilename(state.segments[i]),
+          };
+          const newPdf = await PDFDocument.create();
+          const pageIndices = [];
+          for (let p = seg.start; p <= seg.end; p++) pageIndices.push(p - 1);
+          const copied = await newPdf.copyPages(sourcePdf, pageIndices);
+          copied.forEach(page => newPdf.addPage(page));
+          const bytes = await newPdf.save();
+          zip.file(seg.previewName, bytes);
+          setStatus(`Exporting ${i + 1}/${state.segments.length}: ${seg.previewName}`);
+        }
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const zipBase = sanitizeFilename(el.zipName.value || `${state.baseName}_split`, el.sanitizeMode.value);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(zipBlob);
+        link.download = `${zipBase}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+
+        state.segments = state.segments.map(seg => ({ ...seg, previewName: buildFilename(seg) }));
+        renderSegments();
+        setStatus(`Finished. Downloaded ${zipBase}.zip with ${state.segments.length} PDF file(s).`);
+      } catch (err) {
+        setStatus(`Export failed. ${err?.message || err}`, true);
+      } finally {
+        el.exportBtn.disabled = false;
+        el.analyzeBtn.disabled = false;
+      }
+    }
+
+    function clearAll() {
+      state.file = null;
+      state.baseName = '';
+      state.pdfBytes = null;
+      state.pdfjsDoc = null;
+      state.totalPages = 0;
+      state.rawBookmarks = [];
+      state.segments = [];
+      el.pdfFile.value = '';
+      renderSegments();
+      setStatus('Cleared. Load a PDF, then click “Analyze bookmarks”.');
+    }
+
+    function refreshPreviewNames() {
+      if (!state.segments.length) return;
+      state.segments = state.segments.map(seg => ({ ...seg, previewName: buildFilename(seg) }));
+      renderSegments();
+    }
+
+    el.analyzeBtn.addEventListener('click', analyzePdf);
+    el.exportBtn.addEventListener('click', exportZip);
+    el.clearBtn.addEventListener('click', clearAll);
+    el.sampleBtn.addEventListener('click', () => {
+      el.nameTemplate.value = '{orig}_p{page}_{bookmark}';
+      refreshPreviewNames();
+    });
+
+    ['input', 'change'].forEach(evt => {
+      el.nameTemplate.addEventListener(evt, refreshPreviewNames);
+      el.pagePad.addEventListener(evt, refreshPreviewNames);
+      el.indexPad.addEventListener(evt, refreshPreviewNames);
+      el.sanitizeMode.addEventListener(evt, refreshPreviewNames);
+    });
+
+    el.levelSelect.addEventListener('change', () => {
+      if (el.pdfFile.files?.length) analyzePdf();
+    });
+
+    renderSegments();
+  </script>
+</body>
+</html>
