@@ -250,7 +250,7 @@
         <label for="nameTemplate">Filename template</label>
         <input id="nameTemplate" type="text" value="{orig}_p{page}_{bookmark}" />
         <div class="hint">
-          Available placeholders: <span class="mono">{orig}</span>, <span class="mono">{bookmark}</span>, <span class="mono">{page}</span>, <span class="mono">{index}</span>, <span class="mono">{start}</span>, <span class="mono">{end}</span>, <span class="mono">{pages}</span>.
+          Available placeholders: <span class="mono">{orig}</span>, <span class="mono">{bookmark}</span>, <span class="mono">{page}</span>, <span class="mono">{index}</span>, <span class="mono">{start}</span>, <span class="mono">{end}</span>, <span class="mono">{pages}</span>, <span class="mono">{level1}</span>, <span class="mono">{level2}</span>, <span class="mono">{level3}</span>, <span class="mono">{level4}</span>, <span class="mono">{level5}</span>, <span class="mono">{level6}</span>.
         </div>
 
         <div class="row-3 top-space">
@@ -285,6 +285,13 @@
           <div class="pill">Suggested: <span class="mono">{orig}_p{page}_{bookmark}</span></div>
           <div class="pill">Range: <span class="mono">{orig}_{start}-{end}_{bookmark}</span></div>
           <div class="pill">Indexed: <span class="mono">{orig}_{index}_{bookmark}</span></div>
+          <div class="pill">Hierarchy: <span class="mono">{level1}_{level2}_{bookmark}</span></div>
+          <div class="pill">Deep: <span class="mono">{level1}_{level2}_{level3}_p{page}</span></div>
+          <div class="pill">Clean legal: <span class="mono">{orig} - {level1} - {level2} - p{page}</span></div>
+          <div class="pill">Bookmark first: <span class="mono">{bookmark} - {orig} - p{page}</span></div>
+          <div class="pill">Full path: <span class="mono">{level1}_{level2}_{level3}_{level4}</span></div>
+          <div class="pill">Page range path: <span class="mono">{level1}_{level2}_{start}-{end}</span></div>
+          <div class="pill">Index + path: <span class="mono">{index}_{level1}_{level2}_{bookmark}</span></div>
         </div>
 
         <label for="statusBox">Status</label>
@@ -415,7 +422,8 @@
 
     function buildFilename(seg) {
       const template = el.nameTemplate.value || '{orig}_p{page}_{bookmark}';
-      const filename = template
+
+      let filename = template
         .replaceAll('{orig}', state.baseName)
         .replaceAll('{bookmark}', seg.bookmark)
         .replaceAll('{page}', pad(seg.start, el.pagePad.value))
@@ -424,19 +432,34 @@
         .replaceAll('{end}', pad(seg.end, el.pagePad.value))
         .replaceAll('{pages}', String(seg.pages));
 
+      for (let level = 1; level <= 6; level++) {
+        filename = filename.replaceAll(`{level${level}}`, seg.levels?.[level - 1] || '');
+      }
+
+      filename = filename
+        .replace(/\s{2,}/g, ' ')
+        .replace(/(?:\s*_\s*)+/g, '_')
+        .replace(/(?:\s*-\s*)+/g, ' - ')
+        .replace(/(?:_\s*-\s*|\s*-\s*_)/g, '_')
+        .replace(/^[_\- ]+|[_\- ]+$/g, '')
+        .trim();
+
       return sanitizeFilename(filename, el.sanitizeMode.value) + '.pdf';
     }
 
-    async function flattenOutline(items, depth = 1, result = []) {
+    async function flattenOutline(items, depth = 1, result = [], ancestors = []) {
       if (!items) return result;
       for (const item of items) {
+        const title = item.title || '(Untitled Bookmark)';
+        const path = [...ancestors, title];
         result.push({
-          title: item.title || '(Untitled Bookmark)',
+          title,
           dest: item.dest,
           depth,
+          path,
         });
         if (item.items?.length) {
-          await flattenOutline(item.items, depth + 1, result);
+          await flattenOutline(item.items, depth + 1, result, path);
         }
       }
       return result;
@@ -520,6 +543,7 @@
         return {
           index: i + 1,
           bookmark: bm.title.trim() || `Bookmark ${i + 1}`,
+          levels: Array.from({ length: 6 }, (_, idx) => bm.path?.[idx] || ''),
           start,
           end,
           pages: Math.max(0, end - start + 1),
